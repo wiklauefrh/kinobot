@@ -82,6 +82,12 @@ class Settings(BaseSettings):
             raise ValueError("DATABASE_URL environment variable is required but not set")
         
         url = self.DATABASE_URL
+        
+        # Fix localhost to postgres service name in Railway
+        if "localhost" in url:
+            logger.warning("Detected localhost in DATABASE_URL, converting to Railway service name")
+            url = url.replace("localhost", "postgres")
+        
         if url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql+asyncpg://", 1)
         elif url.startswith("postgresql://"):
@@ -100,6 +106,16 @@ class Settings(BaseSettings):
             and self.API_HASH
             and self.USERBOT_SESSION_STRING
         )
+
+    @property
+    def FIXED_REDIS_URL(self) -> str:
+        """Fix localhost in REDIS_URL for Railway environment."""
+        url = self.REDIS_URL
+        if "localhost" in url:
+            logger.warning("Detected localhost in REDIS_URL, converting to Railway service name")
+            url = url.replace("localhost", "redis")
+            logger.info(f"Using Redis URL: {url}")
+        return url
 
 
 # Global settings instance

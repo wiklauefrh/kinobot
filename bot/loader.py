@@ -17,7 +17,7 @@ bot = Bot(
 # Redis storage for FSM
 async def create_redis_storage():
     """Create Redis storage for FSM."""
-    redis_conn = redis.from_url(settings.REDIS_URL)
+    redis_conn = redis.from_url(settings.FIXED_REDIS_URL)
     return RedisStorage(redis=redis_conn)
 
 # Dispatcher
