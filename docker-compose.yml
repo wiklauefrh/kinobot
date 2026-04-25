@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kinobot_postgres
+    environment:
+      POSTGRES_USER: kinobot_user
+      POSTGRES_PASSWORD: kinobot_password
+      POSTGRES_DB: kinobot_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kinobot_user -d kinobot_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: kinobot_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  bot:
+    build: .
+    container_name: kinobot_bot
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN}
+      BOT_USERNAME: ${BOT_USERNAME}
+      SUPER_ADMIN_IDS: ${SUPER_ADMIN_IDS}
+      DATABASE_URL: postgresql+asyncpg://kinobot_user:kinobot_password@postgres:5432/kinobot_db
+      REDIS_URL: redis://redis:6379/0
+      API_ID: ${API_ID:-0}
+      API_HASH: ${API_HASH:-}
+      USERBOT_SESSION_STRING: ${USERBOT_SESSION_STRING:-}
+      BASE_CHANNEL_ID: ${BASE_CHANNEL_ID}
+      LOG_CHANNEL_ID: ${LOG_CHANNEL_ID}
+      COMMENT_GROUP_ID: ${COMMENT_GROUP_ID}
+      BROADCAST_BOT_RATE: ${BROADCAST_BOT_RATE:-28}
+      BROADCAST_USERBOT_RATE: ${BROADCAST_USERBOT_RATE:-20}
+      ALLOW_PAID_BROADCAST: ${ALLOW_PAID_BROADCAST:-false}
+      TZ: Asia/Tashkent
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
