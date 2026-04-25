@@ -41,11 +41,22 @@ async def create_default_settings():
 
 
 async def setup_database():
-    """Full database setup."""
-    try:
-        await init_db()
-        await create_default_settings()
-        logger.info("✓ Database initialized successfully")
-    except Exception as e:
-        logger.error(f"✗ Database initialization failed: {e}")
-        raise
+    """Full database setup with retry logic."""
+    max_retries = 10
+    retry_delay = 2  # Start with 2 seconds
+    
+    for attempt in range(1, max_retries + 1):
+        try:
+            await init_db()
+            await create_default_settings()
+            logger.info("✓ Database initialized successfully")
+            return
+        except Exception as e:
+            if attempt == max_retries:
+                logger.error(f"✗ Database initialization failed after {max_retries} attempts: {e}")
+                raise
+            
+            logger.warning(f"✗ Database connection attempt {attempt}/{max_retries} failed: {e}")
+            logger.info(f"  Retrying in {retry_delay} seconds...")
+            await asyncio.sleep(retry_delay)
+            retry_delay = min(retry_delay * 1.5, 30)  # Exponential backoff, max 30 seconds
