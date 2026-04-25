@@ -1,6 +1,24 @@
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
+import logging
+import os
+
+# Setup basic logging to see environment info
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+# Log environment variables for debugging
+logger.info("=" * 60)
+logger.info("Environment Variables:")
+for key in sorted(os.environ.keys()):
+    if any(x in key for x in ['DATABASE', 'REDIS', 'POSTGRES', 'DB', 'URL']):
+        value = os.environ[key]
+        # Hide sensitive values
+        if any(x in key for x in ['PASSWORD', 'TOKEN', 'SECRET']):
+            value = '***HIDDEN***'
+        logger.info(f"  {key}={value}")
+logger.info("=" * 60)
 
 
 class Settings(BaseSettings):
@@ -18,7 +36,7 @@ class Settings(BaseSettings):
     SUPER_ADMIN_IDS: list[int]
 
     # Database
-    DATABASE_URL: str
+    DATABASE_URL: Optional[str] = None
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -59,6 +77,10 @@ class Settings(BaseSettings):
     @property
     def ASYNC_DATABASE_URL(self) -> str:
         """Convert DATABASE_URL to async PostgreSQL URL if needed."""
+        if not self.DATABASE_URL:
+            logger.error("DATABASE_URL is not set!")
+            raise ValueError("DATABASE_URL environment variable is required but not set")
+        
         url = self.DATABASE_URL
         if url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql+asyncpg://", 1)
@@ -66,8 +88,6 @@ class Settings(BaseSettings):
             url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
         
         # Log the async URL (without credentials for security)
-        import logging
-        logger = logging.getLogger(__name__)
         safe_url = url.split("@")[-1] if "@" in url else url
         logger.info(f"Using database URL: {safe_url}")
         
